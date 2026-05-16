@@ -37,4 +37,13 @@ public:
     void printUsers() const;
     void printAccounts() const;
     void printTransactions() const;   // ✅ added
+    void printTransactionsForUser(const std::string& userIban) const;
+    bool deleteAccount(const std::string& iban);
+    bool deleteUser(int userId);
+    std::shared_ptr<Account> createAccountForUser(int userId,
+                                               const std::string& type,
+                                               const std::string& iban,
+                                               double balance,
+                                               double extra);
+    void printUsersWithAccounts() const;   // admin-facing: shows owner per account        
 };
