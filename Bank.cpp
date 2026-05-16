@@ -16,11 +16,8 @@ std::shared_ptr<User> Bank::findUserById(int id) const
     for (const auto& user : users)
     {
         if (user->getId() == id)
-        {
             return user;
-        }
     }
-
     return nullptr;
 }
 
@@ -34,77 +31,77 @@ std::shared_ptr<Account> Bank::findAccountByIBAN(const std::string& iban) const
     for (const auto& account : accounts)
     {
         if (account->getIBAN() == iban)
-        {
             return account;
-        }
     }
-
     return nullptr;
 }
 
 bool Bank::deposit(const std::string& iban, double amount)
 {
     auto account = findAccountByIBAN(iban);
-
-    if (!account)
-    {
-        return false;
-    }
+    if (!account) return false;
 
     account->deposit(amount);
+
+    // ✅ Record transaction
+    transactions.emplace_back(nextTransactionId++,
+                              Transaction::Type::Deposit,
+                              amount, "", iban);
     return true;
 }
 
 bool Bank::withdraw(const std::string& iban, double amount)
 {
     auto account = findAccountByIBAN(iban);
+    if (!account) return false;
 
-    if (!account)
+    bool success = account->withdraw(amount);
+
+    // ✅ Record transaction only if successful
+    if (success)
     {
-        return false;
+        transactions.emplace_back(nextTransactionId++,
+                                  Transaction::Type::Withdraw,
+                                  amount, iban, "");
     }
-
-    return account->withdraw(amount);
+    return success;
 }
 
 bool Bank::transfer(const std::string& fromIBAN,
                     const std::string& toIBAN,
                     double amount)
 {
-    auto sender = findAccountByIBAN(fromIBAN);
+    auto sender   = findAccountByIBAN(fromIBAN);
     auto receiver = findAccountByIBAN(toIBAN);
 
-    if (!sender || !receiver)
-    {
-        return false;
-    }
-
-    if (!sender->withdraw(amount))
-    {
-        return false;
-    }
+    if (!sender || !receiver) return false;
+    if (!sender->withdraw(amount)) return false;
 
     receiver->deposit(amount);
+
+    // ✅ Record transaction
+    transactions.emplace_back(nextTransactionId++,
+                              Transaction::Type::Transfer,
+                              amount, fromIBAN, toIBAN);
     return true;
 }
 
-const std::string& Bank::getName() const
-{
-    return name;
-}
+const std::string& Bank::getName() const { return name; }
 
 void Bank::printUsers() const
 {
     for (const auto& user : users)
-    {
         user->print();
-    }
 }
 
 void Bank::printAccounts() const
 {
     for (const auto& account : accounts)
-    {
-        account->print();
-    }
+        account->printInfo();   // ✅ was account->print() — fixed
+}
+
+void Bank::printTransactions() const   // ✅ added
+{
+    for (const auto& t : transactions)
+        t.print();
 }
