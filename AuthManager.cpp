@@ -105,3 +105,23 @@ bool AuthManager::loginAsAdmin(const std::string& username,
     std::cout << "  [!] Invalid admin credentials.\n";
     return false;
 }
+void AuthManager::loadAllUsersIntoBank(Bank& bank)
+{
+    std::ifstream file(USERS_FILE);
+    if (!file.is_open()) return;
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::istringstream ss(line);
+        std::string idStr, name, pass;
+        std::getline(ss, idStr, '|');
+        std::getline(ss, name,  '|');
+        std::getline(ss, pass,  '|');
+        try {
+            int id = std::stoi(idStr);
+            if (!bank.findUserById(id))
+                bank.addUser(std::make_shared<User>(id, name));
+        } catch (...) {}
+    }
+}

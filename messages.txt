@@ -1,0 +1,5 @@
+1|1|Sashungera|0|AccountRequest|Account request from Sashungera (ID: 1) | Type: checking | Details: 10
+2|0|Bank|1|RequestApproved|Your account request was approved. IBAN: 1234
+3|1|Sashungera|0|AccountRequest|Account request from Sashungera (ID: 1) | Type: checkinh | Details: 10
+4|0|Bank|1|RequestApproved|Your account request was approved. IBAN: BG1
+5|1|Sashungera|0|Plain|My deposit failed

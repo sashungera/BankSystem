@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "Bank.h"
 
 struct AuthResult
 {
@@ -18,6 +19,8 @@ private:
     int getNextUserId() const;
 
 public:
+    
+    void loadAllUsersIntoBank(Bank& bank);
     AuthResult signUp(const std::string& username, const std::string& password);
     AuthResult login(const std::string& username, const std::string& password);
     bool loginAsAdmin(const std::string& username, const std::string& password);

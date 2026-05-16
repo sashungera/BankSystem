@@ -33,16 +33,14 @@ static void runAdminSession(Bank& bank, MessageSystem& msgSys)
     int choice = 0;
     while (true)
     {
-        std::cout << "\n  [1]  View all users & accounts\n";
-        std::cout << "  [2]  View account requests\n";
-        std::cout << "  [3]  Approve account request\n";
-        std::cout << "  [4]  Deny account request\n";
-        std::cout << "  [5]  Delete account\n";
-        std::cout << "  [6]  Delete user\n";
-        std::cout << "  [7]  View all messages\n";
-        std::cout << "  [8]  Reply to a user\n";
-        std::cout << "  [9]  View transactions for a user\n";
-        std::cout << "  [10] Log out\n";
+        std::cout << "\n  [1] View all users & accounts\n";
+        std::cout << "  [2] View & action account requests\n";
+        std::cout << "  [3] Delete account\n";
+        std::cout << "  [4] Delete user\n";
+        std::cout << "  [5] View all messages\n";
+        std::cout << "  [6] Reply to a user\n";
+        std::cout << "  [7] View transactions for a user\n";
+        std::cout << "  [8] Log out\n";
         std::cout << "  > ";
         std::cin >> choice;
 
@@ -53,54 +51,61 @@ static void runAdminSession(Bank& bank, MessageSystem& msgSys)
         }
         else if (choice == 2)
         {
-            std::cout << "\n  -- Account Requests --\n";
-            auto reqs = msgSys.getRequestsForBank();
-            if (reqs.empty()) std::cout << "  (no pending requests)\n";
-            else for (auto& r : reqs) r.print();
-        }
-        else if (choice == 3) // Approve
-        {
-            // Show pending requests first
             auto reqs = msgSys.getRequestsForBank();
             if (reqs.empty()) { std::cout << "  (no pending requests)\n"; continue; }
 
-            std::cout << "\n  -- Pending Requests --\n";
+            std::cout << "\n  -- Pending Account Requests --\n";
             for (auto& r : reqs) r.print();
 
-            int userId; std::string type, iban;
-            double balance, extra;
-            std::cout << "\n  Approving for User ID: "; std::cin >> userId;
-            std::cout << "  Account type (savings/checking): "; std::cin >> type;
-            std::cout << "  Assign IBAN: ";                     std::cin >> iban;
-            std::cout << "  Initial balance: ";                 std::cin >> balance;
-            std::cout << (type == "savings"
-                          ? "  Interest rate (e.g. 0.05): "
-                          : "  Overdraft limit: ");
-            std::cin >> extra;
+            std::cout << "\n  Enter message ID to action (0 to cancel): ";
+            int msgId; std::cin >> msgId;
+            if (msgId == 0) continue;
 
-            auto acc = bank.createAccountForUser(userId, type, iban, balance, extra);
-            if (acc)
+            // Find the request
+            Message* target = nullptr;
+            for (auto& r : reqs)
+                if (r.id == msgId) { target = &r; break; }
+
+            if (!target) { std::cout << "  [!] Message ID not found.\n"; continue; }
+
+            std::cout << "  [1] Approve   [2] Deny   > ";
+            int action; std::cin >> action;
+
+            if (action == 1)
             {
-                std::cout << "  [+] Account created: " << iban << "\n";
-                msgSys.sendMessage(0, "Bank", userId,
-                    "Your account request was approved. IBAN: " + iban,
-                    MessageType::RequestApproved);
+                std::string type;
+                double extra;
+                std::cout << "  Account type (savings/checking): "; std::cin >> type;
+                std::cout << (type == "savings"
+                              ? "  Interest rate (e.g. 0.05): "
+                              : "  Overdraft limit: ");
+                std::cin >> extra;
+
+                auto acc = bank.createAccountForUser(target->fromUserId, type, extra);
+                if (acc)
+                {
+                    std::cout << "  [+] Account created: " << acc->getIBAN() << "\n";
+                    msgSys.sendMessage(0, "Bank", target->fromUserId,
+                        "Your account request was approved. IBAN: " + acc->getIBAN(),
+                        MessageType::RequestApproved);
+                }
+                else
+                    std::cout << "  [!] Failed — user not found or invalid type.\n";
+            }
+            else if (action == 2)
+            {
+                std::string reason;
+                clearInput();
+                std::cout << "  Reason: "; std::getline(std::cin, reason);
+                msgSys.sendMessage(0, "Bank", target->fromUserId,
+                    "Your account request was denied. Reason: " + reason,
+                    MessageType::RequestDenied);
+                std::cout << "  [+] Request denied.\n";
             }
             else
-                std::cout << "  [!] Failed — check user ID and account type.\n";
+                std::cout << "  [!] Invalid action.\n";
         }
-        else if (choice == 4) // Deny
-        {
-            int userId;
-            std::string reason;
-            std::cout << "  Deny request for User ID: "; std::cin >> userId;
-            clearInput();
-            std::cout << "  Reason: "; std::getline(std::cin, reason);
-            msgSys.sendMessage(0, "Bank", userId,
-                "Your account request was denied. Reason: " + reason,
-                MessageType::RequestDenied);
-        }
-        else if (choice == 5)
+        else if (choice == 3)
         {
             std::string iban;
             std::cout << "  IBAN to delete: "; std::cin >> iban;
@@ -108,7 +113,7 @@ static void runAdminSession(Bank& bank, MessageSystem& msgSys)
                 ? std::cout << "  [+] Account deleted.\n"
                 : std::cout << "  [!] IBAN not found.\n";
         }
-        else if (choice == 6)
+        else if (choice == 4)
         {
             int userId;
             std::cout << "  User ID to delete: "; std::cin >> userId;
@@ -116,14 +121,14 @@ static void runAdminSession(Bank& bank, MessageSystem& msgSys)
                 ? std::cout << "  [+] User deleted.\n"
                 : std::cout << "  [!] User not found.\n";
         }
-        else if (choice == 7)
+        else if (choice == 5)
         {
             std::cout << "\n  -- All Messages --\n";
             auto msgs = msgSys.getMessagesForBank();
             if (msgs.empty()) std::cout << "  (no messages)\n";
             else for (auto& m : msgs) m.print();
         }
-        else if (choice == 8)
+        else if (choice == 6)
         {
             int toUserId; std::string content;
             std::cout << "  Reply to User ID: "; std::cin >> toUserId;
@@ -131,14 +136,14 @@ static void runAdminSession(Bank& bank, MessageSystem& msgSys)
             std::cout << "  Message: "; std::getline(std::cin, content);
             msgSys.sendMessage(0, "Bank", toUserId, content, MessageType::Plain);
         }
-        else if (choice == 9)
+        else if (choice == 7)
         {
             std::string iban;
-            std::cout << "  Enter user IBAN: "; std::cin >> iban;
+            std::cout << "  Enter IBAN: "; std::cin >> iban;
             std::cout << "\n  -- Transactions for " << iban << " --\n";
             bank.printTransactionsForUser(iban);
         }
-        else if (choice == 10)
+        else if (choice == 8)
         {
             std::cout << "  Logging out of admin panel...\n";
             break;
@@ -158,13 +163,13 @@ static void runBankSession(Bank& bank, MessageSystem& msgSys,
     std::cout << "\n  Logged in as: " << username
               << " (ID: " << userId << ")\n";
 
-    // Register user in bank if first login
     auto user = bank.findUserById(userId);
     if (!user)
     {
         user = std::make_shared<User>(userId, username);
         bank.addUser(user);
-        std::cout << "  Profile created. Request an account from the bank to get started.\n";
+        bank.loadAccounts();
+        std::cout << "  Profile ready. Request an account from the bank to get started.\n";
     }
 
     int choice = 0;
@@ -288,7 +293,13 @@ int main()
             std::cout << "  Username: "; std::cin >> u;
             std::cout << "  Password: "; std::cin >> p;
             AuthResult r = auth.login(u, p);
-            if (r.success) runBankSession(bank, msgSys, r.userId, r.username);
+            if (r.success)
+            {
+                if (!bank.findUserById(r.userId))
+                    bank.addUser(std::make_shared<User>(r.userId, r.username));
+                bank.loadAccounts();
+                runBankSession(bank, msgSys, r.userId, r.username);
+            }
         }
         else if (choice == 2)
         {
@@ -297,7 +308,12 @@ int main()
             std::cout << "  Username: "; std::cin >> u;
             std::cout << "  Password: "; std::cin >> p;
             AuthResult r = auth.signUp(u, p);
-            if (r.success) runBankSession(bank, msgSys, r.userId, r.username);
+            if (r.success)
+            {
+                bank.addUser(std::make_shared<User>(r.userId, r.username));
+                bank.loadAccounts();
+                runBankSession(bank, msgSys, r.userId, r.username);
+            }
         }
         else if (choice == 3)
         {
@@ -306,7 +322,11 @@ int main()
             std::cout << "  Username: "; std::cin >> u;
             std::cout << "  Password: "; std::cin >> p;
             if (auth.loginAsAdmin(u, p))
+            {
+                auth.loadAllUsersIntoBank(bank);
+                bank.loadAccounts();
                 runAdminSession(bank, msgSys);
+            }
         }
         else if (choice == 4)
         {
